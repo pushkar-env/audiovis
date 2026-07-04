@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type VisualizerStyle = "ncs" | "wave" | "galaxy" | "lyrics";
+export type VisualizerStyle = "ncs" | "wave" | "galaxy" | "lyrics" | "tunnel" | "sphere3d";
 export type BackgroundType =
   | "solid"
   | "gradient"

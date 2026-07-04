@@ -381,7 +381,7 @@ export default function LandingPage() {
             Click any visualizer template below to load your audio file and start customizing in the studio.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             
             {/* Style 1: NCS */}
             <div 
@@ -469,6 +469,93 @@ export default function LandingPage() {
                 </div>
                 <div className="mt-6 flex justify-between items-center text-xs font-semibold text-primary uppercase">
                   <span>Cinematic Galaxy Look</span>
+                  <Play className="w-4 h-4 text-primary group-hover:translate-x-1 transition" />
+                </div>
+              </div>
+            </div>
+
+            {/* Style 4: 3D Wave Tunnel */}
+            <div 
+              onClick={() => selectTemplate("tunnel")}
+              className="glass-panel glass-panel-hover rounded-2xl overflow-hidden text-left flex flex-col h-full cursor-pointer group"
+            >
+              <div className="h-48 bg-gradient-to-br from-indigo-950 to-[#0c0a1a] relative flex items-center justify-center p-6 border-b border-white/5 overflow-hidden">
+                <div className="absolute inset-0 opacity-25 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
+                <div className="w-20 h-20 rounded-full border border-indigo-400/30 flex items-center justify-center relative animate-pulse">
+                  <div className="w-16 h-16 rounded-full border-2 border-indigo-300 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full border border-indigo-200" />
+                  </div>
+                </div>
+                <div className="absolute bottom-3 right-3 text-xs bg-black/50 px-2 py-0.5 rounded border border-white/5 font-medium text-indigo-300">
+                  Style 4
+                </div>
+              </div>
+              <div className="p-6 flex-grow flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition">3D Wave Tunnel</h3>
+                  <p className="text-sm text-gray-400">
+                    Fly through a 3D neon tunnel of sound. Concentric frequency rings ripple into the distance using historical audio buffers, paired with floating camera effects and star dust.
+                  </p>
+                </div>
+                <div className="mt-6 flex justify-between items-center text-xs font-semibold text-primary uppercase">
+                  <span>Immersive 3D Space</span>
+                  <Play className="w-4 h-4 text-primary group-hover:translate-x-1 transition" />
+                </div>
+              </div>
+            </div>
+
+            {/* Style 5: 3D Rotating Globe */}
+            <div 
+              onClick={() => selectTemplate("sphere3d")}
+              className="glass-panel glass-panel-hover rounded-2xl overflow-hidden text-left flex flex-col h-full cursor-pointer group"
+            >
+              <div className="h-48 bg-gradient-to-br from-cyan-950 to-[#0c0a1a] relative flex items-center justify-center p-6 border-b border-white/5">
+                <div className="w-20 h-20 rounded-full border-2 border-cyan-400/40 relative flex items-center justify-center animate-spin-slow">
+                  <div className="absolute inset-0 rounded-full border border-dashed border-cyan-200/60 rotate-45" />
+                  <div className="absolute inset-0 rounded-full border border-dashed border-cyan-300/30 -rotate-45" />
+                  <div className="w-4 h-4 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50" />
+                </div>
+                <div className="absolute bottom-3 right-3 text-xs bg-black/50 px-2 py-0.5 rounded border border-white/5 font-medium text-cyan-300">
+                  Style 5
+                </div>
+              </div>
+              <div className="p-6 flex-grow flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition">3D Rotating Globe</h3>
+                  <p className="text-sm text-gray-400">
+                    A beautiful rotating 3D wireframe sphere that morphs and deforms dynamically on coordinate axes based on sound frequencies, generating a futuristic audio planet.
+                  </p>
+                </div>
+                <div className="mt-6 flex justify-between items-center text-xs font-semibold text-primary uppercase">
+                  <span>3D Mesh Planet</span>
+                  <Play className="w-4 h-4 text-primary group-hover:translate-x-1 transition" />
+                </div>
+              </div>
+            </div>
+
+            {/* Style 6: Lyrical Video */}
+            <div 
+              onClick={() => selectTemplate("lyrics")}
+              className="glass-panel glass-panel-hover rounded-2xl overflow-hidden text-left flex flex-col h-full cursor-pointer group"
+            >
+              <div className="h-48 bg-gradient-to-br from-emerald-950 to-[#0c0a1a] relative flex items-center justify-center p-6 border-b border-white/5">
+                <div className="text-center">
+                  <div className="text-xs font-bold text-emerald-400 tracking-widest uppercase mb-1">BeatCanvas</div>
+                  <div className="text-lg font-bold text-white tracking-wide">Sync Lyrics</div>
+                </div>
+                <div className="absolute bottom-3 right-3 text-xs bg-black/50 px-2 py-0.5 rounded border border-white/5 font-medium text-emerald-300">
+                  Style 6
+                </div>
+              </div>
+              <div className="p-6 flex-grow flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition">Lyrical Video</h3>
+                  <p className="text-sm text-gray-400">
+                    Create professional lyrical videos. Display animated text overlays perfectly synchronized with your audio track using standard LRC tags and offsets.
+                  </p>
+                </div>
+                <div className="mt-6 flex justify-between items-center text-xs font-semibold text-primary uppercase">
+                  <span>Synced Typography</span>
                   <Play className="w-4 h-4 text-primary group-hover:translate-x-1 transition" />
                 </div>
               </div>

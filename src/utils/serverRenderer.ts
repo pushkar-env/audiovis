@@ -48,8 +48,22 @@ export async function renderVideoServer(
     const command = ffmpegPath || "ffmpeg";
 
     // 5. Spawn FFmpeg process
-    // We pipe MJPEG images directly to stdin and overlay the audio track.
+    // We pipe raw RGBA pixels directly to stdin and overlay the audio track.
     // -t specifies the exact duration to avoid hanging and guarantee audio sync.
+    let preset = "medium";
+    let crf = "21";
+    let audioBitrate = "192k";
+
+    if (config.exportQuality === "low") {
+      preset = "fast";
+      crf = "25";
+      audioBitrate = "128k";
+    } else if (config.exportQuality === "high") {
+      preset = "medium";
+      crf = "18";
+      audioBitrate = "320k";
+    }
+
     ffmpegProcess = spawn(command, [
       "-y",
       "-f", "rawvideo",
@@ -61,13 +75,14 @@ export async function renderVideoServer(
       "-t", duration.toFixed(3), // enforce exact duration
       "-c:v", "libx264",
       "-pix_fmt", "yuv420p",
-      "-preset", "ultrafast", // fastest encoding preset
-      "-tune", "stillimage",
-      "-crf", "22", // visually lossless
+      "-preset", preset,
+      "-tune", "animation", // optimized for vector visualizer animations
+      "-crf", crf,
       "-c:a", "aac",
-      "-b:a", "320k",
+      "-b:a", audioBitrate,
       outputFilePath,
     ]);
+
 
     let ffmpegError = "";
     ffmpegProcess.stderr.on("data", (data: Buffer) => {

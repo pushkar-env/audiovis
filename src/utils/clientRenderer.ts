@@ -96,6 +96,18 @@ export async function renderVideoClient(
 
   onProgress(88, "Compiling final video (muxing audio and visuals)...");
 
+  // Map export quality to CRF, audio bitrate
+  let crf = "22";
+  let audioBitrate = "192k";
+
+  if (config.exportQuality === "low") {
+    crf = "25";
+    audioBitrate = "128k";
+  } else if (config.exportQuality === "high") {
+    crf = "19";
+    audioBitrate = "320k";
+  }
+
   // Run FFmpeg mux command
   // -preset ultrafast helps complete encoding quickly in WASM.
   // -t limits final duration strictly.
@@ -110,9 +122,10 @@ export async function renderVideoClient(
     "-c:v", "libx264",
     "-pix_fmt", "yuv420p",
     "-preset", "ultrafast",
-    "-crf", "22",
+    "-tune", "animation", // optimized for visualizer vector animations
+    "-crf", crf,
     "-c:a", "aac",
-    "-b:a", "192k",
+    "-b:a", audioBitrate,
     "output.mp4",
   ]);
 

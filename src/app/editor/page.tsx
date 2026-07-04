@@ -584,6 +584,8 @@ export default function EditorPage() {
                     { id: "ncs", label: "NCS Glow Ring", desc: "Large bouncing center circle with halo-polar frequencies." },
                     { id: "wave", label: "Wave Bars", desc: "Inverted vertical spectrum columns with bottom glow reflection." },
                     { id: "galaxy", label: "Galaxy Orb", desc: "Cinematic layered sphere with orbital rings & nebula space clouds." },
+                    { id: "tunnel", label: "3D Wave Tunnel", desc: "Perspective projected 3D wormhole made of audio-reactive neon rings." },
+                    { id: "sphere3d", label: "3D Rotating Globe", desc: "Sound-reactive wireframe grid sphere rotating dynamically in 3D." },
                     { id: "lyrics", label: "Lyrical Video", desc: "Premium dynamic text overlays synchronized using LRC tags." }
                   ].map((tpl) => (
                     <div
@@ -1049,10 +1051,14 @@ export default function EditorPage() {
               />
             </div>
 
-            {style === "ncs" && (
+            {(style === "ncs" || style === "tunnel" || style === "sphere3d") && (
               <div className="space-y-2">
                 <div className="flex justify-between font-semibold uppercase">
-                  <span>Circle Radius</span>
+                  <span>
+                    {style === "ncs" && "Circle Radius"}
+                    {style === "tunnel" && "Tunnel Radius"}
+                    {style === "sphere3d" && "Globe Radius"}
+                  </span>
                   <span className="text-primary font-bold">{circleSize}px</span>
                 </div>
                 <input 

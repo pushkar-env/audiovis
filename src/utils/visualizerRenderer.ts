@@ -336,6 +336,148 @@ class PeakTrackerSystem {
 }
 const wavePeaks = new PeakTrackerSystem();
 
+interface TunnelRing {
+  z: number;
+  color: string;
+  angle: number;
+  wobbleSpeed: number;
+}
+
+interface TunnelParticle {
+  x: number;
+  y: number;
+  z: number;
+  color: string;
+  size: number;
+}
+
+class TunnelSystem {
+  rings: TunnelRing[] = [];
+  particles: TunnelParticle[] = [];
+  frequencyHistory: Float32Array[] = [];
+
+  init(ringCount: number, particleCount: number) {
+    this.rings = [];
+    for (let i = 0; i < ringCount; i++) {
+      this.rings.push({
+        z: (i / ringCount) * 1000,
+        color: i % 2 === 0 ? "primary" : "secondary",
+        angle: Math.random() * Math.PI * 2,
+        wobbleSpeed: 0.5 + Math.random() * 1.5,
+      });
+    }
+    this.particles = [];
+    for (let i = 0; i < particleCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 150 + Math.random() * 350;
+      this.particles.push({
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
+        z: Math.random() * 1000,
+        color: Math.random() > 0.5 ? "primary" : "secondary",
+        size: 1.5 + Math.random() * 2.5,
+      });
+    }
+    this.frequencyHistory = [];
+  }
+
+  update(time: number, bassEnergy: number, frequencies: Float32Array | Uint8Array) {
+    if (this.rings.length === 0) {
+      this.init(15, 200);
+    }
+
+    // Convert frequencies to Float32Array and add to history
+    const floatFreq = new Float32Array(frequencies.length);
+    const isUint = frequencies instanceof Uint8Array;
+    for (let i = 0; i < frequencies.length; i++) {
+      floatFreq[i] = isUint ? frequencies[i] / 255 : frequencies[i];
+    }
+    this.frequencyHistory.unshift(floatFreq);
+    if (this.frequencyHistory.length > 120) {
+      this.frequencyHistory.pop();
+    }
+
+    // Tunnel speed reacts heavily to bass drop
+    const speed = (6.0 + bassEnergy * 28.0) * dtScale;
+
+    // Move rings closer
+    for (const ring of this.rings) {
+      ring.z -= speed;
+      if (ring.z <= 0) {
+        ring.z += 1000;
+        ring.angle = Math.random() * Math.PI * 2;
+      }
+    }
+
+    // Move particles closer
+    for (const p of this.particles) {
+      p.z -= speed;
+      if (p.z <= 0) {
+        p.z += 1000;
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 150 + Math.random() * 350;
+        p.x = Math.cos(angle) * radius;
+        p.y = Math.sin(angle) * radius;
+        p.size = 1.5 + Math.random() * 2.5;
+      }
+    }
+  }
+}
+
+const tunnelSystem = new TunnelSystem();
+
+interface SpherePoint {
+  x: number;
+  y: number;
+  z: number;
+  phi: number;
+  theta: number;
+  frequencyIndex: number;
+}
+
+class Sphere3DSystem {
+  points: SpherePoint[] = [];
+  rotationX = 0;
+  rotationY = 0;
+
+  init() {
+    this.points = [];
+    const rings = 15;
+    const pointsPerRing = 20;
+    for (let r = 0; r < rings; r++) {
+      const phi = (r / (rings - 1)) * Math.PI; // [0 to PI]
+      for (let p = 0; p < pointsPerRing; p++) {
+        const theta = (p / pointsPerRing) * Math.PI * 2; // [0 to 2PI]
+        
+        // Map equatorial regions to mid/bass and poles to higher/treble frequencies
+        const distFromEquator = Math.abs(Math.cos(phi)); // 0 at equator, 1 at poles
+        const freqIdx = Math.floor(distFromEquator * 128);
+        
+        this.points.push({
+          x: Math.sin(phi) * Math.cos(theta),
+          y: Math.cos(phi),
+          z: Math.sin(phi) * Math.sin(theta),
+          phi,
+          theta,
+          frequencyIndex: freqIdx,
+        });
+      }
+    }
+  }
+
+  update(time: number, bassEnergy: number, midEnergy: number) {
+    if (this.points.length === 0) {
+      this.init();
+    }
+    // Rotate sphere dynamically, faster rotation on beats
+    this.rotationY += (0.006 + bassEnergy * 0.012) * dtScale;
+    this.rotationX += (0.004 + midEnergy * 0.008) * dtScale;
+  }
+}
+
+const sphere3DSystem = new Sphere3DSystem();
+
+
 function drawVignette(ctx: any, width: number, height: number, color: string, intensity: number) {
   if (intensity <= 0) return;
   ctx.save();
@@ -552,6 +694,13 @@ export function renderVisualizer(
   // Update particles
   particleSystem.update(config.particleAmount, width, height, config.style, metrics.bassEnergy);
 
+  // Update new 3D systems
+  if (config.style === "tunnel") {
+    tunnelSystem.update(time, metrics.bassEnergy, frequencies);
+  } else if (config.style === "sphere3d") {
+    sphere3DSystem.update(time, metrics.bassEnergy, metrics.midEnergy);
+  }
+
   // Clear Canvas
   ctx.clearRect(0, 0, width, height);
 
@@ -560,7 +709,7 @@ export function renderVisualizer(
   ctx.save();
   let shakeX = 0;
   let shakeY = 0;
-  if (config.style === "ncs" && metrics.bassEnergy > 0.75) {
+  if ((config.style === "ncs" || config.style === "tunnel" || config.style === "sphere3d") && metrics.bassEnergy > 0.75) {
     const shakeIntensity = (metrics.bassEnergy - 0.75) * 45 * scale; // dynamic boost
     shakeX = (Math.random() - 0.5) * shakeIntensity;
     shakeY = (Math.random() - 0.5) * shakeIntensity;
@@ -587,6 +736,10 @@ export function renderVisualizer(
     drawGalaxyStyle(ctx, width, height, frequencies, config, metrics, time);
   } else if (config.style === "lyrics") {
     drawLyricsStyle(ctx, width, height, frequencies, config, metrics, time);
+  } else if (config.style === "tunnel") {
+    drawTunnelStyle(ctx, width, height, frequencies, config, metrics, time);
+  } else if (config.style === "sphere3d") {
+    drawSphere3DStyle(ctx, width, height, frequencies, config, metrics, time);
   }
 
   ctx.restore(); // restores camera shake
@@ -1466,4 +1619,258 @@ function drawLyricsStyle(
     ctx.fillText(lyricLines[activeIdx + 1].text, cx, cy + 95 * scale);
     ctx.restore();
   }
+}
+
+function drawTunnelStyle(
+  ctx: any,
+  width: number,
+  height: number,
+  frequencies: Float32Array | Uint8Array,
+  config: VisualizerConfig,
+  metrics: AudioMetrics,
+  time: number
+) {
+  const scale = Math.min(width, height) / 1080;
+  const cx = width / 2;
+  const cy = height / 2;
+
+  // Let the tunnel center camera sway slowly
+  const camX = cx + Math.sin(time * 0.8) * 60 * scale;
+  const camY = cy + Math.cos(time * 0.6) * 45 * scale;
+  
+  const focalLength = 320 * scale;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  // Sort rings by Z descending (painter's algorithm)
+  const sortedRings = [...tunnelSystem.rings].sort((a, b) => b.z - a.z);
+
+  for (const ring of sortedRings) {
+    const z = ring.z;
+    const sz = focalLength / z;
+    
+    // Calculate fading alpha based on depth
+    let alpha = 1.0 - z / 1000;
+    if (z < 100) {
+      alpha *= (z / 100);
+    }
+    
+    if (alpha <= 0) continue;
+
+    // Get the historical frequencies corresponding to this ring's depth
+    const historyLen = tunnelSystem.frequencyHistory.length;
+    let ringFreq: any = new Float32Array(frequencies.length);
+    if (historyLen > 0) {
+      const historyIndex = Math.min(
+        historyLen - 1,
+        Math.floor((z / 1000) * (historyLen - 1))
+      );
+      ringFreq = tunnelSystem.frequencyHistory[historyIndex];
+    }
+
+    // Determine color
+    const color = ring.color === "primary" ? config.primaryColor : config.secondaryColor;
+    ctx.strokeStyle = hexToRgba(color, alpha * 0.45);
+    ctx.lineWidth = (config.thickness * 0.7 + metrics.bassEnergy * 2.5) * sz;
+
+    if (config.glowIntensity > 0) {
+      ctx.shadowBlur = config.glowIntensity * 1.5 * scale * sz;
+      ctx.shadowColor = color;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+
+    // Draw the reactive polygon ring
+    const segments = 48;
+    const baseRadius = (config.circleSize * 0.8) * scale;
+    ctx.beginPath();
+
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2 + ring.angle + time * 0.05;
+      
+      // Map angle to a frequency index symmetrically
+      const normalizedAngle = Math.abs(Math.sin(angle));
+      const freqIdx = Math.floor(Math.pow(normalizedAngle, 1.4) * (ringFreq.length * 0.45));
+      const rawVal = ringFreq[freqIdx % ringFreq.length] || 0;
+      
+      // Ring radius reacts to frequency
+      const val = Math.min(1.0, rawVal * (1.2 + (freqIdx / ringFreq.length) * 2.2));
+      const radius = baseRadius + val * 120 * scale;
+      
+      // Project 3D point (radius*cos, radius*sin, z) to 2D
+      const rx = camX + (Math.cos(angle) * radius * focalLength) / z;
+      const ry = camY + (Math.sin(angle) * radius * focalLength) / z;
+
+      if (i === 0) ctx.moveTo(rx, ry);
+      else ctx.lineTo(rx, ry);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // Draw Tunnel Particles
+  ctx.shadowBlur = 0;
+  for (const p of tunnelSystem.particles) {
+    const z = p.z;
+    const sz = focalLength / z;
+    
+    // Project 3D coordinate
+    const px = camX + (p.x * focalLength) / z;
+    const py = camY + (p.y * focalLength) / z;
+    const radius = p.size * sz;
+
+    let alpha = 1.0 - z / 1000;
+    if (z < 100) {
+      alpha *= (z / 100);
+    }
+    
+    if (alpha <= 0 || px < 0 || px > width || py < 0 || py > height) continue;
+
+    const color = p.color === "primary" ? config.primaryColor : config.secondaryColor;
+    ctx.fillStyle = hexToRgba(color, alpha * (0.5 + metrics.midEnergy * 0.5));
+
+    ctx.beginPath();
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawSphere3DStyle(
+  ctx: any,
+  width: number,
+  height: number,
+  frequencies: Float32Array | Uint8Array,
+  config: VisualizerConfig,
+  metrics: AudioMetrics,
+  time: number
+) {
+  const scale = Math.min(width, height) / 1080;
+  const cx = width / 2;
+  const cy = height / 2;
+
+  const baseRadius = config.circleSize * scale;
+  const distance = 450 * scale;
+  const focalLength = 380 * scale;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  const rotX = sphere3DSystem.rotationX;
+  const rotY = sphere3DSystem.rotationY;
+
+  // Cache projected coordinates & depth
+  const projectedPoints = sphere3DSystem.points.map((p) => {
+    // Get frequency data
+    const isUint = frequencies instanceof Uint8Array;
+    const rawVal = frequencies[p.frequencyIndex % frequencies.length];
+    const normVal = isUint ? (rawVal as number) / 255 : (rawVal as number);
+    
+    // Equator nodes get more gain, poles get higher frequency boost
+    const gain = 1.25 + (p.frequencyIndex / 128) * 1.8;
+    const val = Math.min(1.0, normVal * gain);
+
+    // Dynamic radius expansion
+    const r = baseRadius * (1.0 + val * 0.38 * (0.5 + metrics.bassEnergy * 0.5));
+
+    // local 3D coordinates
+    const lx = p.x * r;
+    const ly = p.y * r;
+    const lz = p.z * r;
+
+    // Rotate around Y axis
+    let x1 = lx * Math.cos(rotY) - lz * Math.sin(rotY);
+    let z1 = lx * Math.sin(rotY) + lz * Math.cos(rotY);
+
+    // Rotate around X axis
+    let y2 = ly * Math.cos(rotX) - z1 * Math.sin(rotX);
+    let z2 = ly * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+    // Project
+    const sz = focalLength / (z2 + distance);
+    const sx = cx + x1 * sz;
+    const sy = cy + y2 * sz;
+
+    return {
+      sx,
+      sy,
+      sz,
+      depth: z2,
+      color: p.phi > Math.PI * 0.25 && p.phi < Math.PI * 0.75 ? "primary" : "secondary",
+      val
+    };
+  });
+
+  // Draw wireframe grid lines connecting neighboring nodes
+  ctx.lineWidth = 0.8 * scale;
+  const rings = 15;
+  const pointsPerRing = 20;
+
+  for (let r = 0; r < rings; r++) {
+    for (let p = 0; p < pointsPerRing; p++) {
+      const idx = r * pointsPerRing + p;
+      const pt = projectedPoints[idx];
+
+      // Depth fade: scale alpha by z-depth
+      const alpha = 0.45 - (pt.depth / baseRadius) * 0.25;
+      if (alpha <= 0) continue;
+
+      const color = pt.color === "primary" ? config.primaryColor : config.secondaryColor;
+      ctx.strokeStyle = hexToRgba(color, alpha * 0.28);
+
+      // Connect to longitude neighbor (same ring, next point)
+      const nextLonIdx = r * pointsPerRing + ((p + 1) % pointsPerRing);
+      const ptLon = projectedPoints[nextLonIdx];
+      
+      ctx.beginPath();
+      ctx.moveTo(pt.sx, pt.sy);
+      ctx.lineTo(ptLon.sx, ptLon.sy);
+      ctx.stroke();
+
+      // Connect to latitude neighbor (next ring, same point)
+      if (r < rings - 1) {
+        const nextLatIdx = (r + 1) * pointsPerRing + p;
+        const ptLat = projectedPoints[nextLatIdx];
+        
+        ctx.beginPath();
+        ctx.moveTo(pt.sx, pt.sy);
+        ctx.lineTo(ptLat.sx, ptLat.sy);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Draw glowing particles at vertices (sorted by depth for painter's algorithm)
+  const sortedPoints = [...projectedPoints]
+    .map((p, idx) => ({ ...p, idx }))
+    .sort((a, b) => b.depth - a.depth); // back-to-front
+
+  for (const pt of sortedPoints) {
+    const alpha = 0.55 - (pt.depth / baseRadius) * 0.35;
+    if (alpha <= 0) continue;
+
+    const size = (2.2 + pt.val * 3.5) * pt.sz;
+    const color = pt.color === "primary" ? config.primaryColor : config.secondaryColor;
+
+    ctx.save();
+    if (config.glowIntensity > 0) {
+      ctx.shadowBlur = config.glowIntensity * 1.5 * pt.sz;
+      ctx.shadowColor = color;
+    }
+
+    ctx.fillStyle = hexToRgba("#ffffff", alpha * 0.8);
+    ctx.beginPath();
+    ctx.arc(pt.sx, pt.sy, size * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = hexToRgba(color, alpha * 0.6);
+    ctx.beginPath();
+    ctx.arc(pt.sx, pt.sy, size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
 }
