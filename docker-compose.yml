@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  beatcanvas:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: beatcanvas:latest
+    container_name: beatcanvas_app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # Persist uploaded media and compiled videos
+      - temp-uploads:/app/public/temp_uploads
+      - exports:/app/public/exports
+    restart: always
+
+volumes:
+  temp-uploads:
+  exports:
